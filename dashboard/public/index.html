@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Project 20 Results</title>
+<style>
+body{font-family:Arial,sans-serif;margin:24px;background:#f5f6f8;color:#222}
+h1{margin-bottom:4px} h2{margin-top:32px}
+table{border-collapse:collapse;background:#fff;margin:8px 0}
+th,td{border:1px solid #ccc;padding:6px 10px;text-align:right}
+th{background:#2c3e50;color:#fff} td:first-child,th:first-child{text-align:center}
+.bar{height:18px;background:#2980b9;display:inline-block;vertical-align:middle}
+.bar.k{background:#27ae60}
+.row{margin:4px 0;font-size:14px} .lbl{display:inline-block;width:150px}
+.note{font-size:13px;color:#555}
+</style></head><body>
+<h1>HTTP/1.1 Server and Caching Proxy: Results</h1>
+<p class="note">Project 20, CS3001 Fall 2026. Read-only view of results/ files. Mode A = direct, Connection: close; B = direct persistent; C = persistent via caching proxy.</p>
+<h2>Main experiment (own HTTP/1.1 client, mean over 3 runs)</h2>
+<div id="summary"></div>
+<h2>Mode C phases and cache statistics</h2>
+<div id="phases"></div>
+<h2>Page load time (s) per RTT and mode</h2>
+<div id="pagechart"></div>
+<h2>Supplementary ApacheBench (HTTP/1.0, labelled separately)</h2>
+<div id="ab"></div>
+<h2>ab requests/s: without vs with -k</h2>
+<div id="abchart"></div>
+<script>
+function table(d){
+  var h='<table><tr>'+d.headers.map(function(x){return '<th>'+x+'</th>'}).join('')+'</tr>';
+  d.rows.forEach(function(r){h+='<tr>'+r.map(function(x){return '<td>'+x+'</td>'}).join('')+'</tr>'});
+  return h+'</table>';
+}
+function bars(items,max,unit){
+  return items.map(function(i){
+    return '<div class="row"><span class="lbl">'+i.label+'</span><span class="bar '+(i.k?'k':'')+'" style="width:'+(i.v/max*400)+'px"></span> '+i.v+' '+unit+'</div>';
+  }).join('');
+}
+fetch('/api/summary').then(function(r){return r.json()}).then(function(d){
+  var blank=d.rows.findIndex(function(r){return r.length<2 || r.join('').trim()===''});
+  var main=blank<0?d.rows:d.rows.slice(0,blank);
+  var rest=blank<0?[]:d.rows.slice(blank+1);
+  document.getElementById('summary').innerHTML=table({headers:d.headers,rows:main});
+  if(rest.length>1){
+    document.getElementById('phases').innerHTML=table({headers:rest[0],rows:rest.slice(1)});
+  }
+  var ri=d.headers.indexOf('RTT(ms)'), mi=d.headers.indexOf('Mode');
+  var pi=d.headers.findIndex(function(h){return h==='Page time (s)'});
+  if(ri<0||mi<0||pi<0) return;
+  var items=main.map(function(r){return {label:r[ri]+' ms, mode '+r[mi],v:parseFloat(r[pi]),k:r[mi]!=='A'}});
+  var max=Math.max.apply(null,items.map(function(i){return i.v}));
+  document.getElementById('pagechart').innerHTML=bars(items,max,'s');
+});
+fetch('/api/ab').then(function(r){return r.json()}).then(function(d){
+  document.getElementById('ab').innerHTML=table(d);
+  var items=d.rows.map(function(r){return {label:r[0]+' ms, '+(r[1]==='keepalive'?'-k':'no -k'),v:parseFloat(r[2]),k:r[1]==='keepalive'}});
+  var max=Math.max.apply(null,items.map(function(i){return i.v}));
+  document.getElementById('abchart').innerHTML=bars(items,max,'req/s');
+});
+</script></body></html>

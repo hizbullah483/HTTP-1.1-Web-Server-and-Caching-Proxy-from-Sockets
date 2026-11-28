@@ -1,0 +1,7 @@
+{
+  "name": "http20-dashboard",
+  "version": "1.0.0",
+  "description": "Read-only results dashboard for CS3001 Project 20",
+  "main": "server.js",
+  "dependencies": { "express": "^4.19.2" }
+}
